@@ -60,7 +60,6 @@ class BSP():
         print "{0:.<25}: {1:<100}".format("output file full path", self.outputFullPath)
     
     
-    
     @FUNC_NAME
     def OutputFunc(self, log):
         '''
@@ -84,6 +83,196 @@ class BSP():
             nLine 18: Battery Voltage         :  12.39 V.
             nLine 19: Battery Charge Current  :  400.18 mA.
             nLine 20: Time since last batt ev :  172321 seconds.
+            
+            nLine 1: REL_B:  fe80::213:50ff:fe11:e000
+            nLine 2: 288
+            nLine 3: Thu Aug  6 14:45:56 PDT 2015
+            nLine 4: *******      Battery Status      *******
+            nLine 5: Last Battery Test       :  Wed Aug  5 14:55:42 2015
+            nLine 6: ******* Status before load test  *******
+            nLine 7: Charger Temperature     :  31.00 C.
+            nLine 8: No Battery Attached            
+            nLine 9: *******  Status after load test  *******
+            nLine 10: Charger Temperature     :  31.00 C.
+            nLine 11: No Battery Attached            
+            nLine 12: *******      Present State       *******
+            nLine 13: Power Mode              :  Battery is NOT attached; device is operating on external power.
+            nLine 14: Charger Temperature     :  31.37 C.            
+            nLine 15: Battery Voltage         :  0.00 V.
+            nLine 16: Battery Charge Current  :  0.00 mA.
+            nLine 17: Time since last batt ev :  172321 seconds.
+            
+            self.fieldNames = ["Th", "UUT", "IPv6", "MAC ID", 
+                           "Time Stamp",
+                           "Last Battery Test",
+                           "Stamp", 
+                           "Pre-Test Charger Temp",
+                           "Pre-Test Batt Temp",                                                                                               
+                           "Pre-Test Batt Volt",                                                                                                
+                           "Post-Test Charger Temp",                                                                               
+                           "Post-Test Batt Temp",                                                                                               
+                           "Post-Test Batt Volt",                                                                                                
+                           "Power Mode",                                              
+                           "Present Charger Temp",                                                                                               
+                           "Present Batt Temp",                                                                                               
+                           "Present Batt Volt",                                                                                               
+                           "Present Batt Current",                                                                                              
+                           "Time since last batt ev"
+        '''
+        with open(log, 'r') as dataFile:
+            #for testing
+            with open(self.outputFullPath, 'w') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=self.fieldNames, lineterminator='\n', )
+                writer.writeheader()                
+                line = dataFile.next()
+                t = 0
+                while True:                                  
+                    if self.GetMACID(line) is not None:
+                        t = t + 1
+                        HR = t / 6
+                        UUT, IPV6, MAC = self.GetMACID(line)
+                        row = OrderedDict({"Th": HR, "UUT": UUT, "IPv6":IPV6, "MAC ID": MAC})                        
+                        updateLastBatTest = False
+                        
+                        while line != '\n':                        
+                            line = dataFile.next()
+                            
+                            if line in ["Erroneous request\n"]:
+                                continue
+                            
+                            TimeStamp = self.GetTimeStamp(line)
+                            if TimeStamp is not None:
+                                row.update({"Time Stamp":TimeStamp})
+                                line = dataFile.next()
+                            
+                            if "Battery Status" in line:
+                                line = dataFile.next()
+                                LastBatteryTest, LBTUnique = self.GetLastBatTest(line)
+                                if LBTUnique != self.uniqueLastBattTest:
+                                    self.uniqueLastBattTest = LBTUnique                                    
+                                    row.update({"Stamp":"1"})
+                                else:                                    
+                                    row.update({"Stamp":""})
+                                row.update({"Last Battery Test":LastBatteryTest})                                                                                            
+                                line = dataFile.next()
+                            
+                            if "Status before load test" in line:
+                                line = dataFile.next()
+                                if "Charger Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Pre-Test Charger Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Pre-Test Batt Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Voltage" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Pre-Test Batt Volt":data})
+                                    line = dataFile.next()
+                                if "No Battery Attached" in line:                                    
+                                    row.update({"Pre-Test Batt Temp":"0"})
+                                    row.update({"Pre-Test Batt Volt":"0"})
+                                    line = dataFile.next()
+                            
+                            if "Status after load test" in line:
+                                line = dataFile.next()
+                                if "Charger Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Post-Test Charger Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Post-Test Batt Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Voltage" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Post-Test Batt Volt":data})
+                                    line = dataFile.next()
+                                if "No Battery Attached" in line:                                    
+                                    row.update({"Post-Test Batt Temp":"0"})
+                                    row.update({"Post-Test Batt Volt":"0"})
+                                    line = dataFile.next()
+
+                            
+                            if "Present State" in line:
+                                line = dataFile.next()
+                                if "Power Mode" in line:
+                                    pwrMode = self.GetPwrMode(line)
+                                    row.update({"Power Mode":pwrMode})
+                                    line = dataFile.next()                                    
+                                if "Charger Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Present Charger Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Temperature" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Present Batt Temp":data})
+                                    line = dataFile.next()
+                                if "Battery Voltage" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Present Batt Volt":data})
+                                    line = dataFile.next()
+                                if "Battery Charge Current" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Present Batt Current":data})
+                                    line = dataFile.next()
+                                if "Time since last batt ev" in line:
+                                    lastBattEv = self.GetBattEvent(line)
+                                    row.update({"Time since last batt ev":lastBattEv})
+                        print row
+                        writer.writerow(row)                        
+                                                                
+                    else:
+                        try:
+                            line = dataFile.next()
+                            print 
+                        except StopIteration:
+                            print "...End of file..."
+                            return False
+    
+    #Not in use
+    @FUNC_NAME
+    def OutputFunc_2(self, log):
+        '''
+            nLine 1: REL_B:  fe80::213:50ff:fe11:e000
+            nLine 2: 288
+            nLine 3: Thu Aug  6 14:45:56 PDT 2015
+            nLine 4: *******      Battery Status      *******
+            nLine 5: Last Battery Test       :  Wed Aug  5 14:55:42 2015
+            nLine 6: ******* Status before load test  *******
+            nLine 7: Charger Temperature     :  31.00 C.
+            nLine 8: Battery Temperature     :  23.36 C.
+            nLine 9: Battery Voltage         :  9.55 V.
+            nLine 10: *******  Status after load test  *******
+            nLine 11: Charger Temperature     :  31.00 C.
+            nLine 12: Battery Temperature     :  22.82 C.
+            nLine 13: Battery Voltage         :  9.55 V.
+            nLine 14: *******      Present State       *******
+            nLine 15: Power Mode              :  Battery is OFF; device is operating on external power.
+            nLine 16: Charger Temperature     :  31.37 C.
+            nLine 17: Battery Temperature     :  25.87 C.
+            nLine 18: Battery Voltage         :  12.39 V.
+            nLine 19: Battery Charge Current  :  400.18 mA.
+            nLine 20: Time since last batt ev :  172321 seconds.
+            
+            nLine 1: REL_B:  fe80::213:50ff:fe11:e000
+            nLine 2: 288
+            nLine 3: Thu Aug  6 14:45:56 PDT 2015
+            nLine 4: *******      Battery Status      *******
+            nLine 5: Last Battery Test       :  Wed Aug  5 14:55:42 2015
+            nLine 6: ******* Status before load test  *******
+            nLine 7: Charger Temperature     :  31.00 C.
+            nLine 8: No Battery Attached            
+            nLine 9: *******  Status after load test  *******
+            nLine 10: Charger Temperature     :  31.00 C.
+            nLine 11: No Battery Attached            
+            nLine 12: *******      Present State       *******
+            nLine 13: Power Mode              :  Battery is NOT attached; device is operating on external power.
+            nLine 14: Charger Temperature     :  31.37 C.            
+            nLine 15: Battery Voltage         :  0.00 V.
+            nLine 16: Battery Charge Current  :  0.00 mA.
+            nLine 17: Time since last batt ev :  172321 seconds.
         '''
         with open(log, 'r') as dataFile:
             #for testing
@@ -104,6 +293,8 @@ class BSP():
                             line = dataFile.next()
                             if line in ["Erroneous request\n", "", " ", "\n"]:
                                 break
+                            if line in ["No Battery Attached\n"]:
+                                nLine = nLine + 1
                             if not line:
                                 break
                             nLine = nLine + 1
@@ -309,7 +500,15 @@ class BSP():
 #                                 '(?P<sec>\d{2}(\.\d{3}|)))'
 #                                 , line))
         Result = line.strip('\n')
-        return Result
+        #print "Result: ", Result
+        day = re.match(r"^.{3}", Result)
+        #print "day: ", day
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        if day is not None:            
+            if day.group(0) in days:
+                return Result
+            else:
+                return None
 
     
     def GetPwrMode(self, line):
@@ -333,6 +532,8 @@ class BSP():
         Result = Input.search(line)        
         if Result is not None:
             return Result.group(0)
+        else:
+            return 0
     
     def GetChrTemp(self, line):
         '''
