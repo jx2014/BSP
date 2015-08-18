@@ -89,8 +89,7 @@ class BSP():
             #for testing
             with open(self.outputFullPath, 'w') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=self.fieldNames, lineterminator='\n', )
-                writer.writeheader()
-                
+                writer.writeheader()                
                 line = dataFile.next()
                 t = 0
                 while True:                                  
@@ -103,6 +102,10 @@ class BSP():
                         nLine = 1
                         for field in self.fieldNames[4:]:
                             line = dataFile.next()
+                            if line in ["Erroneous request\n", "", " ", "\n"]:
+                                break
+                            if not line:
+                                break
                             nLine = nLine + 1
                                                
                             if nLine in [2, 4, 10, 14]:
@@ -126,12 +129,12 @@ class BSP():
                             
                             if nLine == 6:
                                 if updateLastBatTest == True:
-                                    row.update({field:"x"})
+                                    row.update({field:"1"})
                                 else:
                                     row.update({field:""})                                                                    
                                 continue
                             
-                            if nLine == 5:
+                            if nLine == 5:                                
                                 LastBatteryTest, LBTUnique = self.GetLastBatTest(line)
                                 if LBTUnique != self.uniqueLastBattTest:
                                     self.uniqueLastBattTest = LBTUnique
@@ -385,9 +388,9 @@ class BSP():
             return  "Tue Aug  4 14:54:42 2015", "Tue Aug  4 14:54 2015"
         '''        
         Input = re.compile("(?<=^Last Battery Test       :  ).*")
-        Result = Input.search(line)
-        LastBatDate = re.sub(':\d{2}\s', '', Result.group(0), flags=re.IGNORECASE)
+        Result = Input.search(line)        
         if Result is not None:
+            LastBatDate = re.sub(':\d{2}\s', '', Result.group(0), flags=re.IGNORECASE)
             return Result.group(0), LastBatDate
     
     
