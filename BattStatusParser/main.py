@@ -4,7 +4,8 @@ from BatteryStatusParser import BSP
 #testLog = r"C:\Users\jxue\Documents\RMA\RMA 35491\Net_Mgr_Logs\Scenario2b_BBU_2p5V.txt"
 #testLog = r"C:\Users\jxue\Documents\RMA\RMA 35491\Net_Mgr_Logs\Scenario1_BBU_4P05v.txt"
 #testLog = r"\\o9020-9kbqx12\temp\Battery_Status_Logs\REL_REF.txt"
-testLog = r"C:\Users\jxue\Documents\RMA\RMA 35491\Net_Mgr_Logs\AP_A.txt"
+#testLog = r"C:\Users\jxue\Documents\Projects_LocalDrive\AP_4.5_Battery_Charge_below_7.5V\Logs\REL_REF\REL_REF0.txt"
+testLog = r"C:\Users\jxue\Documents\RMA\RMA 35633_CPS_2APs_5Batts\Log\REL_REF\REL_REF_Final.txt"
 
 test = BSP(testLog)
 

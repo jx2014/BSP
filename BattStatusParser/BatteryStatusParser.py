@@ -23,7 +23,7 @@ class BSP():
         self.logfName, self.logExt = os.path.splitext(self.logName) # abc and .txt
         self.outputName = self.logfName + '_output.csv' # abc_output.csv"
         self.outputFullPath = self.logDirectory+ '\\' + self.outputName # c:\temp\abc_output.txt
-        self.fieldNames = ["Th", "UUT", "IPv6", "MAC ID", 
+        self.fieldNames = ["Entry", "Th", "UUT", "IPv6", "MAC ID",
                            "Time Stamp",
                            "Last Battery Test",
                            "Stamp", 
@@ -38,10 +38,16 @@ class BSP():
                            "Present Batt Temp",                                                                                               
                            "Present Batt Volt",                                                                                               
                            "Present Batt Current",                                                                                              
-                           "Time since last batt ev"
+                           "Time since last batt ev",
+                           "Battery Capacity",
+                           "Battery Capacity Status Change",
+                           "Battery Algorithm",
+                           "Coulomb Algorithm Level",
+                           "Current Scaled Coulomb",
+                           "Current Float Voltage",
                            ]
         self.uniqueLastBattTest = ''
-        
+        self.uniqueLastBatCap = ''
 
         
         #search started flag
@@ -140,6 +146,11 @@ class BSP():
                             if line in ["Erroneous request\n"]:
                                 continue
                             
+                            Entry = self.GetEntry(line)
+                            if Entry is not None:
+                                row.update({"Entry":Entry})
+                                line = dataFile.next()                            
+                            
                             TimeStamp = self.GetTimeStamp(line)
                             if TimeStamp is not None:
                                 row.update({"Time Stamp":TimeStamp})
@@ -193,7 +204,6 @@ class BSP():
                                     row.update({"Post-Test Batt Temp":"0"})
                                     row.update({"Post-Test Batt Volt":"0"})
                                     line = dataFile.next()
-
                             
                             if "Present State" in line:
                                 line = dataFile.next()
@@ -220,6 +230,38 @@ class BSP():
                                 if "Time since last batt ev" in line:
                                     lastBattEv = self.GetBattEvent(line)
                                     row.update({"Time since last batt ev":lastBattEv})
+                            
+                            if "Capacity" in line:
+                                line = dataFile.next()
+                                if "Battery Capacity" in line:
+                                    result = self.GetText(line, text="Battery Capacity        :  ")                                    
+                                    row.update({"Battery Capacity":result})
+                                    
+                                    if result != self.uniqueLastBatCap:
+                                        self.uniqueLastBatCap = result                                    
+                                        row.update({"Battery Capacity Status Change":"1"})
+                                    else:                                    
+                                        row.update({"Battery Capacity Status Change":""})
+                                        
+                                    row.update({"Last Battery Test":LastBatteryTest})   
+                                    line = dataFile.next()
+                                if "Battery Algorithm" in line:
+                                    result = self.GetText(line, text="Battery Algorithm       :  ")
+                                    row.update({"Battery Algorithm":result})
+                                    line = dataFile.next()
+                                if "Coulomb Algorithm Level" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Coulomb Algorithm Level":data})
+                                    line = dataFile.next()
+                                if "Current Scaled Coulomb" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Current Scaled Coulomb":data})
+                                    line = dataFile.next()
+                                if "Current Float Voltage" in line:
+                                    data = self.GetData(line)
+                                    row.update({"Current Float Voltage":data})
+                                    line = dataFile.next()
+                                    
                         print row
                         writer.writerow(row)                        
                                                                 
@@ -509,7 +551,23 @@ class BSP():
                 return Result
             else:
                 return None
-
+    
+    def GetEntry(self, line):
+        Input = re.compile("^\d{1,4}$")
+        Result = Input.search(line)
+        if Result is not None:
+            return Result.group(0)
+        
+    def GetText(self, line, text):
+        '''
+            i.e.
+            line = "Any test                :  Any Text Result."
+            return "Any Text Result."
+        '''
+        Input = re.compile("(?<=^%s).*" % text)
+        Result = Input.search(line)
+        if Result is not None:
+            return Result.group(0)
     
     def GetPwrMode(self, line):
         '''
@@ -519,6 +577,23 @@ class BSP():
         '''
         Input = re.compile("(?<=^Power Mode              :  ).*")        
         Result = Input.search(line)        
+        if Result is not None:            
+            return Result.group(0)
+    
+    def GetBattCap(self, line):
+        '''
+            i.e.
+            line = "Battery Capacity        :  Faulty"
+            return "Faulty"
+            
+            line = "Battery Capacity        :  Initializing"
+            return "Initializing"
+            
+            line = "Battery Capacity        :  0.00 percent"
+            return "0.00 percent"
+        '''
+        Input = re.compile("(?<=^Battery Capacity        :  ).*")
+        Result = Input.search(line)       
         if Result is not None:            
             return Result.group(0)
     
